@@ -33,7 +33,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const corsOptions = {
   origin: [
     "http://localhost:3000", // local dev
-    "https://kaleidoscopic-horse-09adcd.netlify.app" // deployed Netlify URL
+    "https://celadon-jelly-91b9e7.netlify.app" // deployed Netlify URL
   ],
   credentials: true,
 };
