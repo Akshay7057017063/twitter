@@ -21,16 +21,15 @@ router.post("/register", Register);
 router.post("/login", Login);
 router.get("/logout", logout);
 
-// 👤 User Profile Routes
+// 👤 Profile Routes
 router.get("/profile/:id", isAuthenticated, getMyProfile);
-router.get("/other-users/:id", isAuthenticated, getOtherUsers); // ✅ FIXED route name
+router.get("/other-users/:id", isAuthenticated, getOtherUsers);
+router.put("/update-profile", isAuthenticated, upload.single("avatar"), updateProfile);
 
-router.put("/update-profile", isAuthenticated, upload.single("avatar"), updateProfile); // ✅ Using req.user from middleware
-
-// 📌 Tweet Bookmark
+// 📌 Bookmark Routes
 router.put("/bookmark/:id", isAuthenticated, bookmark);
 
-// 👥 Follow/Unfollow
+// 👥 Follow/Unfollow Routes
 router.post("/follow/:id", isAuthenticated, follow);
 router.post("/unfollow/:id", isAuthenticated, unfollow);
 

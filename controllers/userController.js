@@ -79,6 +79,8 @@ export const Login = async (req, res) => {
       .cookie("token", token, {
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000,
+        sameSite: "None",
+        secure: true,
       })
       .json({
         message: `Welcome back ${user.name}`,
@@ -97,6 +99,8 @@ export const logout = (req, res) => {
     .cookie("token", "", {
       httpOnly: true,
       expires: new Date(0),
+      sameSite: "None",
+      secure: true,
     })
     .json({
       message: "User logged out successfully.",
@@ -112,23 +116,23 @@ export const bookmark = async (req, res) => {
 
     const user = await User.findById(loggedInUserId);
     if (!user) {
-      return res.status(404).json({ message: "User not found." });
+      return res.status(404).json({ message: "User not found", success: false });
     }
 
     if (user.bookmarks.includes(tweetId)) {
       await User.findByIdAndUpdate(loggedInUserId, {
         $pull: { bookmarks: tweetId },
       });
-      return res.status(200).json({ message: "Removed from bookmarks." });
+      return res.status(200).json({ message: "Removed from bookmarks", success: true });
     } else {
       await User.findByIdAndUpdate(loggedInUserId, {
         $push: { bookmarks: tweetId },
       });
-      return res.status(200).json({ message: "Saved to bookmarks." });
+      return res.status(200).json({ message: "Saved to bookmarks", success: true });
     }
   } catch (error) {
     console.error("Bookmark error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", success: false });
   }
 };
 
@@ -139,26 +143,37 @@ export const getMyProfile = async (req, res) => {
     const user = await User.findById(id).select("-password");
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found", success: false });
     }
 
-    return res.status(200).json({ user });
+    return res.status(200).json({ user, success: true });
   } catch (error) {
     console.error("Get profile error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", success: false });
   }
 };
 
-// ✅ Get Other Users
+// ✅ Get Other Users OR Specific User by ID
 export const getOtherUsers = async (req, res) => {
   try {
     const { id } = req.params;
-    const otherUsers = await User.find({ _id: { $ne: id } }).select("-password");
 
-    return res.status(200).json({ otherUsers });
+    // If a specific user is requested
+    if (id && id !== "all") {
+      const user = await User.findById(id).select("-password");
+      if (!user) {
+        return res.status(404).json({ message: "User not found", success: false });
+      }
+      return res.status(200).json({ user, success: true });
+    }
+
+    // Else return all other users
+    const otherUsers = await User.find({ _id: { $ne: req.user._id } }).select("-password");
+
+    return res.status(200).json({ otherUsers, success: true });
   } catch (error) {
-    console.error("Get users error:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Get other users error:", error);
+    res.status(500).json({ message: "Server error", success: false });
   }
 };
 
@@ -172,12 +187,13 @@ export const follow = async (req, res) => {
     const user = await User.findById(userId);
 
     if (!loggedInUser || !user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found", success: false });
     }
 
     if (user.followers.includes(loggedInUserId)) {
       return res.status(400).json({
         message: `You already follow ${user.name}`,
+        success: false,
       });
     }
 
@@ -190,7 +206,7 @@ export const follow = async (req, res) => {
     });
   } catch (error) {
     console.error("Follow error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", success: false });
   }
 };
 
@@ -204,12 +220,13 @@ export const unfollow = async (req, res) => {
     const user = await User.findById(userId);
 
     if (!loggedInUser || !user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found", success: false });
     }
 
     if (!loggedInUser.following.includes(userId)) {
       return res.status(400).json({
         message: `You are not following ${user.name}`,
+        success: false,
       });
     }
 
@@ -222,7 +239,7 @@ export const unfollow = async (req, res) => {
     });
   } catch (error) {
     console.error("Unfollow error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", success: false });
   }
 };
 
@@ -240,7 +257,7 @@ export const updateProfile = async (req, res) => {
       updateData.bio = bio;
     }
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true }).select("-password");
 
     res.status(200).json({
       message: "Profile updated successfully",
