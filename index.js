@@ -21,6 +21,29 @@ databaseConnection();
 // ✅ Initialize Express App
 const app = express();
 
+// ✅ CORS Configuration
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://celadon-jelly-91b9e7.netlify.app",
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+};
+
+// ✅ Use CORS
+app.use(cors(corsOptions));
+
+// ✅ Handle preflight OPTIONS request globally
+app.options("*", cors(corsOptions));
+
 // ✅ Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -28,16 +51,6 @@ app.use(cookieParser());
 
 // ✅ Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// ✅ Enable CORS for Netlify (frontend) and localhost (dev)
-const corsOptions = {
-  origin: [
-    "http://localhost:3000", // local dev
-    "https://celadon-jelly-91b9e7.netlify.app" // deployed Netlify URL
-  ],
-  credentials: true,
-};
-app.use(cors(corsOptions));
 
 // ✅ Routes
 app.use("/api/v1/user", userRoute);
