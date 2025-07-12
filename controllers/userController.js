@@ -1,0 +1,254 @@
+import { User } from "../models/userSchema.js";
+import bcryptjs from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+// ✅ Register Controller
+export const Register = async (req, res) => {
+  try {
+    const { name, username, email, password } = req.body;
+
+    if (!name || !username || !email || !password) {
+      return res.status(400).json({
+        message: "All fields are required.",
+        success: false,
+      });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({
+        message: "User already exists.",
+        success: false,
+      });
+    }
+
+    const hashedPassword = await bcryptjs.hash(password, 16);
+
+    await User.create({
+      name,
+      username,
+      email,
+      password: hashedPassword,
+    });
+
+    return res.status(201).json({
+      message: "Account created successfully.",
+      success: true,
+    });
+  } catch (error) {
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Server error", success: false });
+  }
+};
+
+// ✅ Login Controller
+export const Login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "All fields are required.",
+        success: false,
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
+        message: "Incorrect email or password",
+        success: false,
+      });
+    }
+
+    const isMatch = await bcryptjs.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        message: "Incorrect email or password",
+        success: false,
+      });
+    }
+
+    const tokenData = { userId: user._id };
+    const token = jwt.sign(tokenData, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+
+    return res
+      .status(200)
+      .cookie("token", token, {
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+      })
+      .json({
+        message: `Welcome back ${user.name}`,
+        user,
+        success: true,
+      });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error", success: false });
+  }
+};
+
+// ✅ Logout Controller
+export const logout = (req, res) => {
+  return res
+    .cookie("token", "", {
+      httpOnly: true,
+      expires: new Date(0),
+    })
+    .json({
+      message: "User logged out successfully.",
+      success: true,
+    });
+};
+
+// ✅ Bookmark Controller
+export const bookmark = async (req, res) => {
+  try {
+    const loggedInUserId = req.user._id;
+    const tweetId = req.params.id;
+
+    const user = await User.findById(loggedInUserId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (user.bookmarks.includes(tweetId)) {
+      await User.findByIdAndUpdate(loggedInUserId, {
+        $pull: { bookmarks: tweetId },
+      });
+      return res.status(200).json({ message: "Removed from bookmarks." });
+    } else {
+      await User.findByIdAndUpdate(loggedInUserId, {
+        $push: { bookmarks: tweetId },
+      });
+      return res.status(200).json({ message: "Saved to bookmarks." });
+    }
+  } catch (error) {
+    console.error("Bookmark error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ✅ Get My Profile
+export const getMyProfile = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const user = await User.findById(id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ user });
+  } catch (error) {
+    console.error("Get profile error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ✅ Get Other Users
+export const getOtherUsers = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const otherUsers = await User.find({ _id: { $ne: id } }).select("-password");
+
+    return res.status(200).json({ otherUsers });
+  } catch (error) {
+    console.error("Get users error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ✅ Follow User
+export const follow = async (req, res) => {
+  try {
+    const loggedInUserId = req.user._id;
+    const userId = req.params.id;
+
+    const loggedInUser = await User.findById(loggedInUserId);
+    const user = await User.findById(userId);
+
+    if (!loggedInUser || !user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.followers.includes(loggedInUserId)) {
+      return res.status(400).json({
+        message: `You already follow ${user.name}`,
+      });
+    }
+
+    await user.updateOne({ $push: { followers: loggedInUserId } });
+    await loggedInUser.updateOne({ $push: { following: userId } });
+
+    return res.status(200).json({
+      message: `${loggedInUser.name} followed ${user.name}`,
+      success: true,
+    });
+  } catch (error) {
+    console.error("Follow error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ✅ Unfollow User
+export const unfollow = async (req, res) => {
+  try {
+    const loggedInUserId = req.user._id;
+    const userId = req.params.id;
+
+    const loggedInUser = await User.findById(loggedInUserId);
+    const user = await User.findById(userId);
+
+    if (!loggedInUser || !user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!loggedInUser.following.includes(userId)) {
+      return res.status(400).json({
+        message: `You are not following ${user.name}`,
+      });
+    }
+
+    await user.updateOne({ $pull: { followers: loggedInUserId } });
+    await loggedInUser.updateOne({ $pull: { following: userId } });
+
+    return res.status(200).json({
+      message: `${loggedInUser.name} unfollowed ${user.name}`,
+      success: true,
+    });
+  } catch (error) {
+    console.error("Unfollow error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ✅ Update Profile (Avatar + Bio)
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { bio } = req.body;
+
+    const updateData = {};
+    if (req.file) {
+      updateData.avatar = `/uploads/${req.file.filename}`;
+    }
+    if (bio) {
+      updateData.bio = bio;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+      success: true,
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    res.status(500).json({ message: "Internal server error", success: false });
+  }
+};
