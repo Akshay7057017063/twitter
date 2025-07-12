@@ -29,9 +29,12 @@ app.use(cookieParser());
 // ✅ Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ✅ Enable CORS for frontend (adjust for production if needed)
+// ✅ Enable CORS for Netlify (frontend) and localhost (dev)
 const corsOptions = {
-  origin: "http://localhost:3000", // replace with frontend domain in prod
+  origin: [
+    "http://localhost:3000", // local dev
+    "https://kaleidoscopic-horse-09adcd.netlify.app" // deployed Netlify URL
+  ],
   credentials: true,
 };
 app.use(cors(corsOptions));
@@ -40,7 +43,7 @@ app.use(cors(corsOptions));
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/tweet", tweetRoute);
 
-// ✅ Default route for checking
+// ✅ Default route for testing
 app.get("/", (req, res) => {
   res.send("API is working ✅");
 });
