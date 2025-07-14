@@ -119,27 +119,26 @@ export const bookmark = async (req, res) => {
       return res.status(404).json({ message: "User not found", success: false });
     }
 
-    if (user.bookmarks.includes(tweetId)) {
-      await User.findByIdAndUpdate(loggedInUserId, {
-        $pull: { bookmarks: tweetId },
-      });
-      return res.status(200).json({ message: "Removed from bookmarks", success: true });
-    } else {
-      await User.findByIdAndUpdate(loggedInUserId, {
-        $push: { bookmarks: tweetId },
-      });
-      return res.status(200).json({ message: "Saved to bookmarks", success: true });
-    }
+    const isBookmarked = user.bookmarks.includes(tweetId);
+
+    await User.findByIdAndUpdate(loggedInUserId, {
+      [isBookmarked ? "$pull" : "$push"]: { bookmarks: tweetId },
+    });
+
+    return res.status(200).json({
+      message: isBookmarked ? "Removed from bookmarks" : "Saved to bookmarks",
+      success: true,
+    });
   } catch (error) {
     console.error("Bookmark error:", error);
     res.status(500).json({ message: "Server error", success: false });
   }
 };
 
-// ✅ Get My Profile
+// ✅ Get My Profile (fallback if ID not passed)
 export const getMyProfile = async (req, res) => {
   try {
-    const id = req.params.id;
+    const id = req.params.id || req.user._id;
     const user = await User.findById(id).select("-password");
 
     if (!user) {
@@ -158,8 +157,11 @@ export const getOtherUsers = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // If a specific user is requested
-    if (id && id !== "all") {
+    if (!id || id === "undefined") {
+      return res.status(400).json({ message: "Invalid or missing user ID", success: false });
+    }
+
+    if (id !== "all") {
       const user = await User.findById(id).select("-password");
       if (!user) {
         return res.status(404).json({ message: "User not found", success: false });
@@ -167,7 +169,6 @@ export const getOtherUsers = async (req, res) => {
       return res.status(200).json({ user, success: true });
     }
 
-    // Else return all other users
     const otherUsers = await User.find({ _id: { $ne: req.user._id } }).select("-password");
 
     return res.status(200).json({ otherUsers, success: true });
@@ -183,8 +184,10 @@ export const follow = async (req, res) => {
     const loggedInUserId = req.user._id;
     const userId = req.params.id;
 
-    const loggedInUser = await User.findById(loggedInUserId);
-    const user = await User.findById(userId);
+    const [loggedInUser, user] = await Promise.all([
+      User.findById(loggedInUserId),
+      User.findById(userId),
+    ]);
 
     if (!loggedInUser || !user) {
       return res.status(404).json({ message: "User not found", success: false });
@@ -216,8 +219,10 @@ export const unfollow = async (req, res) => {
     const loggedInUserId = req.user._id;
     const userId = req.params.id;
 
-    const loggedInUser = await User.findById(loggedInUserId);
-    const user = await User.findById(userId);
+    const [loggedInUser, user] = await Promise.all([
+      User.findById(loggedInUserId),
+      User.findById(userId),
+    ]);
 
     if (!loggedInUser || !user) {
       return res.status(404).json({ message: "User not found", success: false });
@@ -257,7 +262,9 @@ export const updateProfile = async (req, res) => {
       updateData.bio = bio;
     }
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true }).select("-password");
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+    }).select("-password");
 
     res.status(200).json({
       message: "Profile updated successfully",
@@ -265,7 +272,7 @@ export const updateProfile = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    console.error("Update profile error:", error);
+    console.error("Update profile error:", error.message || error);
     res.status(500).json({ message: "Internal server error", success: false });
   }
 };
