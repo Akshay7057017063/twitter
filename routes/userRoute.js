@@ -23,7 +23,11 @@ router.get("/logout", logout);
 
 // 👤 Profile Routes
 router.get("/profile/:id", isAuthenticated, getMyProfile);
-router.get("/other-users/:id", isAuthenticated, getOtherUsers);
+
+// ✅ GET other users or specific user (frontend expects /otheruser/:id or /otheruser/all)
+router.get("/otheruser/:id", isAuthenticated, getOtherUsers);
+
+// ✅ Update Profile (Avatar & Bio)
 router.put("/update-profile", isAuthenticated, upload.single("avatar"), updateProfile);
 
 // 📌 Bookmark Routes

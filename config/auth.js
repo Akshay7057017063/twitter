@@ -1,11 +1,13 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { User } from "../models/userSchema.js"; // ✅ Import User model
+import { User } from "../models/userSchema.js";
+
 dotenv.config();
 
 const isAuthenticated = async (req, res, next) => {
   try {
-    const token = req.cookies.token;
+    // Get token from cookies or Authorization header
+    const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
 
     if (!token) {
       return res.status(401).json({
@@ -14,11 +16,14 @@ const isAuthenticated = async (req, res, next) => {
       });
     }
 
-    // ✅ Decode token
+    if (!process.env.JWT_SECRET) {
+      console.warn("⚠️ JWT_SECRET is missing from environment variables.");
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ✅ Fetch full user from database
     const user = await User.findById(decoded.userId).select("-password");
+
     if (!user) {
       return res.status(404).json({
         message: "User not found.",
@@ -26,7 +31,7 @@ const isAuthenticated = async (req, res, next) => {
       });
     }
 
-    req.user = user; // ✅ Set full user on req.user
+    req.user = user;
     next();
   } catch (error) {
     console.error("JWT Verification Error:", error.message);

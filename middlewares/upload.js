@@ -1,45 +1,50 @@
+// middlewares/upload.js
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// ✅ Create uploads directory if not exists
+// ✅ Define upload directory
 const uploadPath = path.resolve("uploads");
 
+// ✅ Create 'uploads' folder if not exists
 try {
   if (!fs.existsSync(uploadPath)) {
     fs.mkdirSync(uploadPath);
+    console.log("📁 'uploads' folder created.");
   }
 } catch (error) {
-  console.error("❌ Error creating uploads folder:", error);
+  console.error("❌ Failed to create 'uploads' folder:", error);
 }
 
-// ✅ Configure storage engine
+// ✅ Multer storage config
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: (req, file, cb) => {
     cb(null, uploadPath);
   },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname)); // e.g. 1699999991234.png
+  filename: (req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `${uniqueSuffix}${ext}`); // e.g. 1621231231234.png
   }
 });
 
-// ✅ Optional: File type and size restrictions
+// ✅ Allow only image files (jpg, png, gif, etc.)
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif/;
-  const mimeType = allowedTypes.test(file.mimetype);
-  const extName = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const isValidMime = allowedTypes.test(file.mimetype);
+  const isValidExt = allowedTypes.test(path.extname(file.originalname).toLowerCase());
 
-  if (mimeType && extName) {
-    return cb(null, true);
+  if (isValidMime && isValidExt) {
+    cb(null, true);
   } else {
-    cb(new Error("Only image files are allowed (jpg, jpeg, png, gif)."));
+    cb(new Error("Only image files (jpg, jpeg, png, gif) are allowed."));
   }
 };
 
+// ✅ Multer upload middleware (5MB max)
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max file size
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter
 });
 
