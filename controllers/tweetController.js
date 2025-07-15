@@ -170,3 +170,17 @@ export const commentOnTweet = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to add comment" });
   }
 };
+
+// ✅ NEW: Get All Tweets Globally (for universal feed)
+export const getAllTweetsForFeed = async (req, res) => {
+  try {
+    const allTweets = await Tweet.find().sort({ createdAt: -1 });
+    return res.status(200).json({
+      tweets: allTweets,
+      success: true,
+    });
+  } catch (error) {
+    console.error("Get All Global Tweets Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};

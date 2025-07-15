@@ -4,21 +4,24 @@ import {
   deleteTweet,
   getAllTweets,
   getFollowingTweets,
+  getAllTweetsForFeed, // ✅ new controller
   likeOrDislike,
-  commentOnTweet // ✅ added this
+  commentOnTweet
 } from "../controllers/tweetController.js";
+
 import isAuthenticated from "../config/auth.js";
 
 const router = express.Router();
 
-// Routes
-router.route("/create").post(isAuthenticated, createTweet);
-router.route("/delete/:id").delete(isAuthenticated, deleteTweet);
-router.route("/like/:id").put(isAuthenticated, likeOrDislike);
-router.route("/alltweets/:id").get(isAuthenticated, getAllTweets);
-router.route("/followingtweets/:id").get(isAuthenticated, getFollowingTweets);
+// ✍️ Tweet Actions
+router.post("/create", isAuthenticated, createTweet);
+router.delete("/delete/:id", isAuthenticated, deleteTweet);
+router.put("/like/:id", isAuthenticated, likeOrDislike);
+router.post("/comment/:id", isAuthenticated, commentOnTweet);
 
-// ✅ Comment route
-router.route("/comment/:id").post(isAuthenticated, commentOnTweet);
+// 📌 Feed Routes
+router.get("/alltweets/:id", isAuthenticated, getAllTweets); // user's own tweets
+router.get("/followingtweets/:id", isAuthenticated, getFollowingTweets); // followed users
+router.get("/all", isAuthenticated, getAllTweetsForFeed); // ✅ all tweets for global feed
 
 export default router;
