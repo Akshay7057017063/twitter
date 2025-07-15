@@ -24,7 +24,7 @@ const app = express();
 // ✅ CORS Configuration
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://resonant-stardust-5fed1d.netlify.app",
+  "https://spectacular-crepe-97e275.netlify.app",
 ];
 
 const corsOptions = {
