@@ -32,7 +32,8 @@ const corsOptions = {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS"));
+      // ✅ Safely reject disallowed origins without crashing the app
+      callback(null, false);
     }
   },
   credentials: true,
@@ -61,7 +62,7 @@ app.get("/", (req, res) => {
   res.send("API is working ✅");
 });
 
-// ✅ Start Server
+
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
